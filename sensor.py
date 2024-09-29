@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
-
-#graf
 import matplotlib.pyplot as plt
-#import numpy as np
-
 import smbus
 import math
 from time import sleep
 import time
+import time
+import requests
+
+#サーバ側の受信サーブレットのURL
+URL='http://10.22.241.48.:8080/webapp-pi/saveImageServlet' 
 
 DEV_ADDR = 0x68
 
@@ -61,13 +61,29 @@ def jumpCheck(ax):
             print("jump!!!!!!!!!!!!!!!!!!!!!!!!!")
             jump = True
             sign = True
+            sendMessage()
         if(ax < -0.3):
             print("jump!!!!!!!!!!!!!!!!!!!!!!!!!")
             jump = True
             sign = False
+            sendMessage()
             
         
+def sendMessage():
+    # HTTPで送るデータをセット
+    PAYLOAD = {
+        "text_tag":('jumped!', 'plain/text')
+    }
     
+    # HTTPのPOSTメゾッドを使って、サーバへファイルを送る
+    # 受信側のサーブレットではdoGet()ではなくdoPost()に処理を書く  
+    response = requests.post(URL, files = PAYLOAD)
+
+    # (デバッグ用)通信内容の表示
+    print('REQUEST (POST): ' + URL)
+    print('RESPONSE (' + str(response.status_code) + '): ' + response.text)
+
+
 
 x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 y = [0.0,0.0,0.0,0.0,0.0,-2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.0]
@@ -82,7 +98,6 @@ while 1:
     except:
         ax = 0.0
     
-    #print ('x:{:4.3f}, y:{:4.3f}, z:{:4.3f}' .format(gx, gy, gz))
     #ジャンプの検出
     jumpCheck(ax)
     print('y:{:4.3f}'.format(y[0]))
