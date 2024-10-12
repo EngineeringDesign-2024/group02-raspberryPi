@@ -60,20 +60,26 @@ def getAccel():
     return [x, y, z]
 
 
-def jumpCheck(a):
-    global jump, sign
+def jumpCheck(ax):
+    global jump, sign, coolTime
     if(jump == True):
+        #ジャンプ終了の判定
+        if(time.time() - coolTime > 3):
+            jump = False
         if(ax > 0.0 and sign == False):
             jump = False
         if(ax < -0.0 and sign == True):
             jump = False
     else:
+        #ジャンプ開始の判定
         if(ax > 0.6):
             jump = True
             sign = True
+            coolTime = time.time() 
         if(ax < -0.6):
             jump = True
             sign = False
+            coolTime = time.time() 
             
 
 def accel():

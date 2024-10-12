@@ -1,8 +1,24 @@
 import matplotlib.pyplot as plt
 import smbus
 import math
+from flask import Flask, jsonify
+from flask_cors import CORS
+import threading
 import time
 import requests
+
+#サーバセットアップ
+app = Flask(__name__)
+
+#CORSを有効化
+CORS(app)
+
+#JSONデータを返すエンドポイント
+@app.route('/data')
+def get_data():
+    global current_random_value
+    data = {"jump": True}
+    return jsonify(data)
 
 
 #加速度センサセットアップ
@@ -91,28 +107,37 @@ line3, = axs.plot(x_data, az_data, label='az', color='b')
 # 凡例を表示
 axs.legend()
 
+def accel():
+    while True:
+        global ax, ay, az
+        try:
+            ax, ay, az = getAccel()
+        except:
+            ax,ay,az = 0.0
+        a = ay+az
+        #ジャンプの検出
+        jumpCheck(a)
 
-while True:
-    try:
-        ax, ay, az = getAccel()
-    except:
-        ax,ay,az = 0.0
-    a = ay+az
-    #ジャンプの検出
-    jumpCheck(a)
+        #新しいデータをリストに追加
+        ax_data.append(ax)
+        ay_data.append(ay)
+        az_data.append(az)
+        del ax_data[0]
+        del ay_data[0]
+        del az_data[0]
 
-    #新しいデータをリストに追加
-    ax_data.append(ax)
-    ay_data.append(ay)
-    az_data.append(az)
-    del ax_data[0]
-    del ay_data[0]
-    del az_data[0]
+        #グラフを再描画
+        plt.draw()
+        #0.1秒待機
+        plt.pause(0.1)
 
-    #グラフを再描画
-    plt.draw()
-    #0.1秒待機
-    plt.pause(1)
 
+#ジャンプの判定を更新し続けるスレッドを開始
+if __name__ == '__main__':
+    # 別スレッドでランダムな値を更新し続ける
+    thread = threading.Thread(target=accel)
+    thread.daemon = True
+    thread.start()
     
-    
+    # Flaskサーバーの起動
+    app.run(debug=False, host="0.0.0.0")

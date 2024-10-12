@@ -1,0 +1,29 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Data from Python Server</title>
+    <script>
+        // Pythonサーバーからデータを取得する関数
+        function fetchDataFromPythonServer() {
+            // Pythonサーバーのエンドポイントにリクエスト
+            fetch('http://10.22.240.22:5000/data')  // Flaskサーバーがlocalhost:5000で動作中
+                .then(response => response.json())  // JSONレスポンスを解析
+                .then(data => {
+                    // 取得したデータをHTMLに表示
+                    document.getElementById("message").innerText = data.message;
+                    document.getElementById("value").innerText = data.value;
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+    </script>
+</head>
+<body>
+    <h1>Get Data from Flask</h1>
+    <p>Message: <span id="message">Loading...</span></p>
+    <p>Value: <span id="value">Loading...</span></p>
+
+    <button onclick="fetchDataFromPythonServer()">Fetch Data</button>
+</body>
+</html>
