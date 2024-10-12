@@ -9,8 +9,6 @@ app = Flask(__name__)
 # CORSを有効化
 CORS(app)
 
-a = 0
-
 
 # ランダムな値を格納するグローバル変数
 current_random_value = 0
