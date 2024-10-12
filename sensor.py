@@ -1,16 +1,28 @@
 import matplotlib.pyplot as plt
 import smbus
 import math
-from time import sleep
-import time
+from flask import Flask, jsonify
+from flask_cors import CORS
+import threading
 import time
 import requests
 
-#サーバ側の受信サーブレットのURL
-URL='http://10.22.241.48.:8080/webapp-pi/saveImageServlet' 
+#サーバセットアップ
+app = Flask(__name__)
 
+#CORSを有効化
+CORS(app)
+
+#JSONデータを返すエンドポイント
+@app.route('/data')
+def get_data():
+    global current_random_value
+    data = {"jump": True}
+    return jsonify(data)
+
+
+#加速度センサセットアップ
 DEV_ADDR = 0x68
-
 ACCEL_XOUT = 0x3b
 ACCEL_YOUT = 0x3d
 ACCEL_ZOUT = 0x3f
@@ -25,6 +37,7 @@ PWR_MGMT_2 = 0x6c
 bus = smbus.SMBus(1)
 bus.write_byte_data(DEV_ADDR, PWR_MGMT_1, 0)
 
+coolTime = time.time() 
 jump = False
 sign = True
 
@@ -47,67 +60,42 @@ def getAccel():
     return [x, y, z]
 
 
-def jumpCheck(ax):
+def jumpCheck(a):
     global jump, sign
     if(jump == True):
         if(ax > 0.0 and sign == False):
-            print("fin!!!!!!!!!!!!!!!!!!!!!!!!!")
             jump = False
         if(ax < -0.0 and sign == True):
-            print("fin!!!!!!!!!!!!!!!!!!!!!!!!!")
             jump = False
     else:
-        if(ax > 0.3):
-            print("jump!!!!!!!!!!!!!!!!!!!!!!!!!")
+        if(ax > 0.6):
             jump = True
             sign = True
-            sendMessage()
-        if(ax < -0.3):
-            print("jump!!!!!!!!!!!!!!!!!!!!!!!!!")
+        if(ax < -0.6):
             jump = True
             sign = False
-            sendMessage()
             
-        
-def sendMessage():
-    # HTTPで送るデータをセット
-    PAYLOAD = {
-        "text_tag":('jumped!', 'plain/text')
-    }
-    
-    # HTTPのPOSTメゾッドを使って、サーバへファイルを送る
-    # 受信側のサーブレットではdoGet()ではなくdoPost()に処理を書く  
-    response = requests.post(URL, files = PAYLOAD)
 
-    # (デバッグ用)通信内容の表示
-    print('REQUEST (POST): ' + URL)
-    print('RESPONSE (' + str(response.status_code) + '): ' + response.text)
+def accel():
+    global ax, ay, az
+    while True:
+        try:
+            ax, ay, az = getAccel()
+        except:
+            ax,ay,az = 0.0
+        a = az + ay
+        #ジャンプの検出
+        jumpCheck(a)
 
-
-
-x = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
-y = [0.0,0.0,0.0,0.0,0.0,-2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.0]
-
-fig,ax = plt.subplots(1,1)
-lines, = ax.plot(x,y)
-
-
-while 1:
-    try:
-        ax, ay, az = getAccel()
-    except:
-        ax = 0.0
-    
-    #ジャンプの検出
-    jumpCheck(ax)
-    print('y:{:4.3f}'.format(y[0]))
-
-    #最新の2秒間のデータを表示
-    y.append(ax)
-    del y[0]
-    
-    lines.set_data(x,y)
-    
-    plt.pause(.1)
+        time.sleep(0.1)
     
     
+#ジャンプの判定を更新し続けるスレッドを開始
+if __name__ == '__main__':
+    # 別スレッドでランダムな値を更新し続ける
+    thread = threading.Thread(target=accel)
+    thread.daemon = True
+    thread.start()
+    
+    # Flaskサーバーの起動
+    app.run(debug=False, host="0.0.0.0")
